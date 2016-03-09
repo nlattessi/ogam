@@ -17,7 +17,7 @@ Proto2.Preloader.prototype = {
 
     this.load.bitmapFont('fat-and-tiny');
 
-    this.load.images([ 'logo', 'fish', 'hook', 'worm1', 'worm2', 'undersea', 'back', 'cave', 'wallH', 'bones' ]);
+    this.load.images([ 'logo', 'fish', 'hook', 'worm1', 'worm2', 'undersea', 'back', 'cave', 'wallH', 'bones', 'sword' ]);
 
   },
 
@@ -60,8 +60,10 @@ Proto2.Game = function (game) {
 
   this.floor = null;
 
-  this.player = null;
   this.worms = null;
+  this.player = null;
+
+  this.sword = null;
 
   this.cursors = null;
 
@@ -101,6 +103,16 @@ Proto2.Game.prototype = {
 
     //this.physics.arcade.gravity.y = 500;
 
+    this.sword = this.add.sprite(40, 0, 'sword');
+    this.sword.anchor.set(0.5);
+    this.sword.angle += 90;
+
+    this.physics.arcade.enable(this.sword);
+
+    this.sword.body.setSize(58, 26, 0, 0);
+
+    this.player.addChild(this.sword);
+
     this.floor = this.add.physicsGroup();
     //game.add.sprite(-100, 160, 'wallH', 0, this.floor); // Middle left
     game.add.sprite(0, 280, 'wallH', 0, this.floor); // Middle right
@@ -132,9 +144,11 @@ Proto2.Game.prototype = {
 
   toggleDebug : function () {
 
-    console.log(this.showDebug);
-
     this.showDebug = (this.showDebug) ? false : true;
+
+    if (!this.showDebug) {
+      this.game.debug.reset();
+    }
 
   },
 
@@ -153,17 +167,18 @@ Proto2.Game.prototype = {
       this.faceRight();
     }
 
-    // if (this.cursors.up.isDown && this.player.body.touching.down) {
-    //   this.player.body.velocity.y = -320;
-    // }
+    if (this.cursors.up.isDown && this.player.body.touching.down) {
+      this.player.body.velocity.y = -320;
+    }
 
     this.physics.arcade.overlap(this.player, this.worms, this.checkWorm, null, this);
+    this.physics.arcade.overlap(this.sword, this.worms, this.checkWorm, null, this);
 
   },
 
   faceLeft : function () {
 
-    this.player.angle = 0;
+    //this.player.angle = 0;
     this.player.scale.set(-1, 1);
     this.player.facing = Phaser.RIGHT;
 
@@ -171,7 +186,7 @@ Proto2.Game.prototype = {
 
   faceRight : function () {
 
-    this.player.angle = 0;
+    //this.player.angle = 0;
     this.player.scale.set(1, 1);
     this.player.facing = Phaser.LEFT;
 
@@ -179,11 +194,59 @@ Proto2.Game.prototype = {
 
   checkWorm : function (fish, worm) {
 
-    if (fish.facing === worm.body.facing) {
-      worm.kill();
-    } else {
-      this.killPlayer();
+    console.log("fish facing", fish.facing);
+    console.log("worm facing", worm.body.facing);
+    console.log(worm.body.touching);
+
+    if (fish.key === 'fish') {
+      if (fish.facing === worm.body.facing
+        || (fish.facing === Phaser.RIGHT && worm.body.touching.right)
+        || (fish.facing === Phaser.LEFT && worm.body.touching.left) ) {
+        worm.kill();
+        //this.releaseItem();
+      } else {
+        this.killPlayer();
+      }
     }
+
+    if (fish.key === 'sword') {
+      //this.goWorm(worm)
+      //worm.kill();
+      if (worm.lives == 0) {
+        worm.kill();
+      } else {
+        worm.lives -= 1;
+        this.tweenInt(worm, 0xff0000, 0x0000ff, 2000);
+        worm.body.velocity.x *= -1;
+      }
+      //this.releaseItem();
+    }
+
+  },
+
+  tweenInt : function (obj, startColor, endColor, time) {
+
+    var colorBlend = { step: 0 };
+    var colorTween = this.add.tween(colorBlend).to({ step: 100 }, time);
+
+    colorTween.onUpdateCallback(function () {
+      obj.tint = Phaser.Color.interpolateColor(startColor, endColor, 100, colorBlend.step);
+    });
+
+    obj.tint = startColor;
+
+    colorTween.start();
+
+  },
+
+  goWorm : function (worm) {
+
+    var move = this.add.tween(worm);
+    var jump = this.add.tween(worm);
+
+    move.to({ x: this.game.width }, 2000, Phaser.Easing.Linear.InOut);
+
+    move.start();
 
   },
 
@@ -230,18 +293,25 @@ Proto2.Game.prototype = {
       item.body.velocity.x = -150;
     }
 
-    this.time.events.add(this.wormReleaseRate, this.releaseItem, this);
+    item.checkWorldBounds = true;
+    item.outOfBoundsKill = true;
 
-    if (this.wormReleaseRate > 250) {
-        this.wormReleaseRate -= 20;
-    }
+    item.lives = 2;
+
+    //this.time.events.add(this.wormReleaseRate, this.releaseItem, this);
+
+    // if (this.wormReleaseRate > 250) {
+    //     this.wormReleaseRate -= 20;
+    // }
 
   },
 
   render : function () {
 
     if (this.showDebug) {
+      this.game.debug.bodyInfo(this.player, 32, 32);
       this.game.debug.body(this.player);
+      this.game.debug.body(this.sword);
     }
 
   }
