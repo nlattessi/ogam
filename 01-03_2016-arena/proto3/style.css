@@ -1,0 +1,20 @@
+* {
+      box-sizing: border-box;
+      margin: 0 0 0px 0;
+    }
+    html, body {
+      height: 100%;
+      width: 100%;
+      margin: 0;
+      padding: 0;
+      background-color: #1c5366;
+    }
+    canvas {
+      border: 10px solid #6fa9bd;
+      position: absolute;
+      width: 50%;
+      height: 50%;
+      top: 25%;
+      left: 25%;
+      background-color: red;
+    }
