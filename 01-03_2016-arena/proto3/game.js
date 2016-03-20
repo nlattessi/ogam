@@ -1,43 +1,31 @@
 var Proto3 = {};
 
 Proto3.Boot = function (game) {
-
   console.log("%cStarting my proto3 game", "color:white; background:red");
-
 };
 
 Proto3.Boot.prototype = {
-
   init : function () {
-
     this.scale.pageAlignHorizontally = true;
     this.scale.pageAlignVertically = true;
-
   },
 
   preload : function () {
-
     this.load.path = 'assets/';
     this.load.image('loading');
-
   },
 
   create : function () {
-
     this.state.start('Proto3.Preloader');
-
   }
-
 };
 
 Proto3.Preloader = function () {};
 
 Proto3.Preloader.prototype = {
-
   init : function () {},
 
   preload : function () {
-
     //this.stage.backgroundColor = '#2d2d2d';
     this.stage.backgroundColor = '#3498db';
 
@@ -50,65 +38,48 @@ Proto3.Preloader.prototype = {
 
     this.load.bitmapFont('fat-and-tiny');
 
-    this.load.images([ 'coin', 'dust', 'enemy', 'exp', 'ground', 'wall' ]);
+    this.load.images([ 'coin', 'dust', 'enemy', 'exp', 'ground', 'wall', 'enemy2', 'enemy3' ]);
 
     this.load.spritesheet('player', null, 28, 22);
-
   },
 
   create : function () {
-
     this.state.start('Proto3.Game');
-
   }
-
 };
 
 Proto3.MainMenu = function () {};
 
 Proto3.MainMenu.prototype = {
-
-  init : function () {},
-
-  preload : function () {},
-
   create : function () {
-
     var start = this.add.bitmapText(this.world.centerX, this.world.centerY, 'fat-and-tiny', 'CLICK TO PLAY', 64);
     start.anchor.set(0.5);
     start.smoothed = false;
     start.tint = 0xff0000;
 
     this.input.onDown.addOnce(this.start, this);
-
   },
 
   start : function () {
-
     this.state.start('Proto3.Game');
-
   }
-
 };
 
 Proto3.Game = function () {
-
   this.player = null;
   this.enemies = null;
 
   this.showDebug = null;
-
 };
 
 Proto3.Game.prototype = {
-
   init : function () {
     this.showDebug = false;
   },
 
   create : function () {
     this.enemies = this.add.physicsGroup();
-    this.enemies.alpha = 0.8;
+    //this.enemies.alpha = 0.8;
 
     this.player = this.add.sprite(250, 50, 'player');
     this.player.anchor.set(0.5);
@@ -161,8 +132,29 @@ Proto3.Game.prototype = {
 
   update : function () {
     this.physics.arcade.collide(this.player, this.level);
-    this.physics.arcade.collide(this.enemies, this.level);
+    this.physics.arcade.collide(this.enemies, this.level, this.flipEnemy, null, this);
 
+    this.updateInputs();
+
+    this.physics.arcade.overlap(this.player, this.enemies, this.checkEnemy, null, this);
+  },
+
+  render : function () {
+    if (this.showDebug) {
+        this.game.debug.body(this.player);
+        //this.game.debug.body(this.enemy);
+    }
+  },
+
+  toggleDebug : function () {
+    this.showDebug = (this.showDebug) ? false : true;
+  },
+
+  togglePause : function () {
+    this.game.paused = (this.game.paused) ? false : true;
+  },
+
+  updateInputs : function () {
     if (this.cursors.left.isDown) {
       this.player.body.velocity.x = -200;
       this.player.frame = 2;
@@ -180,23 +172,12 @@ Proto3.Game.prototype = {
     if (this.cursors.up.isDown) {
       this.playerJump();
     }
-
-    this.physics.arcade.overlap(this.player, this.enemies, this.checkEnemy, null, this);
   },
 
-  render : function () {
-    if (this.showDebug) {
-        this.game.debug.body(this.player);
-        this.game.debug.body(this.enemy);
+  playerJump : function () {
+    if (this.player.body.touching.down && this.player.y > 100) {
+      this.player.body.velocity.y = -220;
     }
-  },
-
-  toggleDebug : function () {
-    this.showDebug = (this.showDebug) ? false : true;
-  },
-
-  togglePause : function () {
-    this.game.paused = (this.game.paused) ? false : true;
   },
 
   spawnPlayer : function () {
@@ -205,14 +186,19 @@ Proto3.Game.prototype = {
     this.player.reset(250, 50);
   },
 
+  changeDir : function (sprite) {
+    sprite.scale.x *= -1;
+  },
+
   releaseEnemy : function () {
-    var enemy = this.enemies.getFirstDead(true, 0, 0, 'enemy');
+    var enemy = this.enemies.getFirstDead(true, 0, 0, 'enemy2');
     var position = this.rnd.between(1, 2);
 
     if (position === Phaser.LEFT) {
       enemy.x = 120;
       enemy.y = 20;
       enemy.body.velocity.x = 100;
+      this.changeDir(enemy);
     } else if (position === Phaser.RIGHT) {
       enemy.x = 360;
       enemy.y = 20,
@@ -223,7 +209,7 @@ Proto3.Game.prototype = {
     enemy.body.gravity.y = 600;
     enemy.body.bounce.x = 1;
 
-    this.time.events.add(1500, this.releaseEnemy, this);
+    //this.time.events.add(1500, this.releaseEnemy, this);
   },
 
   spawnEnemy : function () {
@@ -233,7 +219,32 @@ Proto3.Game.prototype = {
     this.enemy.body.gravity.y = 600;
   },
 
-  checkEnemy : function () {
+  flipEnemy : function (enemy, level) {
+    if (enemy.body.touching.left && (! enemy.lastCollision || enemy.lastCollision == Phaser.RIGHT)) {
+      enemy.lastCollision = Phaser.LEFT;
+      this.changeDir(enemy);
+    } else if (enemy.body.touching.right && (! enemy.lastCollision || enemy.lastCollision == Phaser.LEFT)) {
+      enemy.lastCollision = Phaser.RIGHT;
+      this.changeDir(enemy);
+    }
+  },
+
+  checkEnemy : function (player, enemy) {
+    if (enemy.key == 'enemy2') {
+      this.checkEnemy2(player, enemy);
+    }
+  },
+
+  checkEnemy2: function (player, enemy) {
+    if ((player.body.touching.right && enemy.body.velocity.x > 0) || (player.body.touching.left && enemy.body.velocity.x < 0)) {
+      enemy.kill();
+    } else {
+      this.shakeScreen();
+      this.spawnPlayer();
+    }
+  },
+
+  shakeScreen : function () {
     var move = 5;
     var time = 20;
 
@@ -266,16 +277,7 @@ Proto3.Game.prototype = {
         .start()
       ;
     }, this);
-
-    this.spawnPlayer ();
-  },
-
-  playerJump : function () {
-    if (this.player.body.touching.down && this.player.y > 100) {
-      this.player.body.velocity.y = -220;
-    }
-  },
-
+  }
 };
 
 
