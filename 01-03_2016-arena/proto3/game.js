@@ -78,6 +78,7 @@ Proto3.Game.prototype = {
   },
 
   create : function () {
+    this.coins = this.add.group();
     this.enemies = this.add.physicsGroup();
     //this.enemies.alpha = 0.8;
 
@@ -237,11 +238,21 @@ Proto3.Game.prototype = {
 
   checkEnemy2: function (player, enemy) {
     if ((player.body.touching.right && enemy.body.velocity.x > 0) || (player.body.touching.left && enemy.body.velocity.x < 0)) {
+      this.takeCoin(enemy);
       enemy.kill();
     } else {
       this.shakeScreen();
       this.spawnPlayer();
     }
+  },
+
+  takeCoin: function (enemy) {
+    var coin = this.add.sprite(enemy.x, enemy.y, 'coin');
+    this.game.add.tween(coin.scale).to({ x:0 }, 250).start();
+    var tween = this.game.add.tween(coin).to({ y:50}, 250).start();
+    tween.onComplete.add(function () {
+      coin.kill();
+    }, this);
   },
 
   shakeScreen : function () {
